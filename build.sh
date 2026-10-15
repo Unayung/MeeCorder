@@ -18,7 +18,7 @@ fi
 rm -rf "$app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Frameworks" "$app/Contents/Resources"
 cp "$here/Info.plist" "$app/Contents/Info.plist"
-cp "$here/vendor/ggml-silero-v6.2.0.bin" "$app/Contents/Resources/"
+cp "$here/vendor/ggml-silero-v6.2.0.bin" "$here/LICENSE" "$here/THIRD_PARTY_NOTICES.md" "$app/Contents/Resources/"
 # Assets.car for macOS 26 and later, AppIcon.icns for older ones.
 xcrun actool "$here/Icon/AppIcon.icon" --compile "$app/Contents/Resources" --platform macosx \
   --minimum-deployment-target 15.0 --app-icon AppIcon --output-partial-info-plist /dev/null >/dev/null
