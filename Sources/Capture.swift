@@ -6,7 +6,10 @@ import AVFoundation
 import CoreAudio
 import Foundation
 
-let meetingApps = ["com.microsoft.edgemac", "com.google.Chrome", "com.tinyspeck.slackmacgap", "us.zoom.xos",
+// Safari takes the microphone through WebKit's GPU process, not com.apple.Safari. Chromium browsers (Chrome,
+// Edge, Arc, Brave) through helpers named after the browser. Firefox is listed by its bundle ID, untested.
+let meetingApps = ["com.microsoft.edgemac", "com.google.Chrome", "com.apple.WebKit.GPU", "company.thebrowser.Browser",
+                   "com.brave.Browser", "org.mozilla.firefox", "com.tinyspeck.slackmacgap", "us.zoom.xos",
                    "com.microsoft.teams2"]
 let segmentSeconds = 60.0
 let outputRate = 16_000.0
