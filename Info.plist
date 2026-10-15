@@ -6,12 +6,17 @@
   <key>CFBundleDisplayName</key><string>MeeCorder</string>
   <key>CFBundleExecutable</key><string>MeeCorder</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleShortVersionString</key><string>0.3</string>
-  <key>CFBundleVersion</key><string>3</string>
+  <key>CFBundleShortVersionString</key><string>0.4</string>
+  <key>CFBundleVersion</key><string>4</string>
   <key>LSMinimumSystemVersion</key><string>15.0</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundleIconName</key><string>AppIcon</string>
   <key>LSUIElement</key><true/>
+  <key>CFBundleDevelopmentRegion</key><string>zh_TW</string>
+  <key>CFBundleAllowMixedLocalizations</key><true/>
+  <key>SUFeedURL</key><string>https://raw.githubusercontent.com/Unayung/MeeCorder/main/appcast.xml</string>
+  <key>SUPublicEDKey</key><string>4KsuE0cUKMvEVs4AEwrXBJe1JcleMns5U6OkDy054UA=</string>
+  <key>SUEnableAutomaticChecks</key><true/>
   <key>NSMicrophoneUsageDescription</key><string>錄下會議中你說的話。</string>
   <key>NSAudioCaptureUsageDescription</key><string>錄下會議中其他人說的話。</string>
 </dict></plist>

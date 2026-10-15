@@ -5,11 +5,15 @@
 #   gh release download b5454 -R ggml-org/whisper.cpp -p '*xcframework.zip' -D vendor && unzip -q -d vendor vendor/*.zip
 #   curl -fL --http1.1 -o vendor/ggml-silero-v6.2.0.bin \
 #     https://huggingface.co/ggml-org/whisper-vad/resolve/main/ggml-silero-v6.2.0.bin
+# and Sparkle, which updates the app:
+#   gh release download 2.10.0 -R sparkle-project/Sparkle -p 'Sparkle-2.10.0.tar.xz' -D vendor \
+#     && mkdir -p vendor/Sparkle && tar -xf vendor/Sparkle-2.10.0.tar.xz -C vendor/Sparkle
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 app="$here/build/MeeCorder.app"
 frameworks="$here/vendor/build-apple/whisper.xcframework/macos-arm64_x86_64"
+sparkle="$here/vendor/Sparkle"
 
 if [ -z "${DEVELOPER_DIR:-}" ] && [ -d /Applications/Xcode.app/Contents/Developer ]; then
   export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
@@ -23,15 +27,18 @@ cp "$here/vendor/ggml-silero-v6.2.0.bin" "$here/LICENSE" "$here/THIRD_PARTY_NOTI
 xcrun actool "$here/Icon/AppIcon.icon" --compile "$app/Contents/Resources" --platform macosx \
   --minimum-deployment-target 15.0 --app-icon AppIcon --output-partial-info-plist /dev/null >/dev/null
 ditto "$frameworks/whisper.framework" "$app/Contents/Frameworks/whisper.framework"
+ditto "$sparkle/Sparkle.framework" "$app/Contents/Frameworks/Sparkle.framework"
+# Its XPC services are for sandboxed apps only; this one isn't.
+rm -rf "$app/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices"
 xcrun swiftc -O -swift-version 5 -parse-as-library -target arm64-apple-macos15.0 \
-  -F "$frameworks" -framework whisper -Xlinker -rpath -Xlinker @executable_path/../Frameworks \
+  -F "$frameworks" -F "$sparkle" -framework whisper -framework Sparkle \
+  -Xlinker -rpath -Xlinker @executable_path/../Frameworks \
   -o "$app/Contents/MacOS/MeeCorder" "$here"/Sources/*.swift
 
 # A stable signing identity keeps the privacy grants across rebuilds; ad-hoc signing would lose them.
 # Over SSH the login keychain is locked: IDENTITY=- signs ad-hoc instead.
 identity="${IDENTITY:-$(security find-identity -v -p codesigning | awk -F'"' '/Apple Development/ {print $2; exit}')}"
-codesign --force --sign "${identity:--}" "$app/Contents/Frameworks/whisper.framework"
-codesign --force --sign "${identity:--}" "$app"
+"$here/sign.sh" "${identity:--}" "$app"
 echo "Built $app"
 
 if [ "${1:-}" = "--install" ]; then

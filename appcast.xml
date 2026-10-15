@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+  <channel>
+    <title>MeeCorder</title>
+    <item>
+      <title>MeeCorder 0.4</title>
+      <pubDate>Thu, 15 Oct 2026 06:57:41 +0000</pubDate>
+      <sparkle:version>4</sparkle:version>
+      <sparkle:shortVersionString>0.4</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+      <link>https://github.com/Unayung/MeeCorder/releases/tag/v0.4</link>
+      <enclosure url="https://github.com/Unayung/MeeCorder/releases/download/v0.4/MeeCorder-0.4.dmg"
+                 type="application/octet-stream" sparkle:edSignature="0I0cSSQlK/wqCixCnYzJxUkaQrwDLeDK2QaLHXnqrKUkHTXGToNBksZf7UGBlObbg3WKZNmEhxRp3c6ETGmWCw==" length="9890222"/>
+    </item>
+  </channel>
+</rss>

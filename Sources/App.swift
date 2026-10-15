@@ -2,6 +2,7 @@
 import AppKit
 import AVFoundation
 import ServiceManagement
+import Sparkle
 import SwiftUI
 import UserNotifications
 
@@ -90,7 +91,7 @@ struct MeeCorderApp: App {
 }
 
 @MainActor
-final class Recorder: ObservableObject {
+final class Recorder: NSObject, ObservableObject, SPUUpdaterDelegate {
     struct Recording { let meeting: URL, since: Date, capture: MeetingCapture }
 
     @Published var recording: Recording?
@@ -107,8 +108,13 @@ final class Recorder: ObservableObject {
     private var catchingUp = false
     private var skipThisMeeting = false  // Stopped by hand while the call goes on: don't start again until it ends.
     private var timer: Timer?
+    private var update: (() -> Void)?  // An update waiting for the recording and transcripts to finish.
+    private(set) var updater: SPUStandardUpdaterController!
 
-    init() {
+    override init() {
+        super.init()
+        // Sparkle checks GitHub once a day and asks before installing.
+        updater = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: self, userDriverDelegate: nil)
         try? FileManager.default.createDirectory(at: meetingsDir, withIntermediateDirectories: true)
         if !FileManager.default.fileExists(atPath: vocabularyURL.path) {
             try? """
@@ -194,6 +200,7 @@ final class Recorder: ObservableObject {
             }
             transcribing -= 1
             refresh()
+            installUpdateIfIdle()
         }
     }
 
@@ -212,6 +219,22 @@ final class Recorder: ObservableObject {
             }
             catchingUp = false
         }
+    }
+
+    /// Installing an update restarts the app, which would cut a recording short.
+    nonisolated func updater(_ updater: SPUUpdater, shouldPostponeRelaunchForUpdate item: SUAppcastItem,
+                             untilInvokingBlock installHandler: @escaping () -> Void) -> Bool {
+        MainActor.assumeIsolated {
+            guard recording != nil || transcribing > 0 else { return false }
+            update = installHandler
+            return true
+        }
+    }
+
+    private func installUpdateIfIdle() {
+        guard recording == nil, transcribing == 0, let update else { return }
+        self.update = nil
+        update()
     }
 
     /// The speech model, downloaded once. A failed download is tried again on the next call.
@@ -319,6 +342,12 @@ struct MenuView: View {
                 }
             }
             Divider()
+            HStack {
+                Text("MeeCorder \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "")")
+                    .font(.caption).foregroundStyle(.secondary)
+                Spacer()
+                Button("檢查更新…") { recorder.updater.checkForUpdates(nil) }
+            }
             HStack {
                 Button("打開會議資料夾") { NSWorkspace.shared.open(meetingsDir) }
                 Button("編輯詞彙") { NSWorkspace.shared.open(vocabularyURL) }

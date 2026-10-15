@@ -22,6 +22,7 @@ Mac 選單列上的會議錄音工具。用 Google Meet、Zoom、Teams 或 Slack
 - **手動**：點選單列圖示，按「開始錄音」或「停止錄音」。不想自動錄，可以在選單裡關掉。
 - **逐字稿**：存在 `~/Documents/Meetings/<日期 時間> 會議/transcript.md`，旁邊的 `audio/` 是錄音檔。選單會列出最近五場會議，點名稱就會打開。
 - **複製給 AI**：會把整理會議的指示和逐字稿一起複製，直接貼進 AI 工具就行。
+- **更新**：每天自動檢查一次，有新版會跳出視窗詢問，按「安裝更新」就會換好並重新開啟。正在錄音或轉寫時，會等結束後才重開。也可以按選單的「檢查更新…」。
 - **詞彙**：人名、產品名、英文術語常被聽錯的話，按選單的「編輯詞彙」，一行寫一個正確的寫法。之後辨識都會參考這些詞，不用重開 App。
 
 用喇叭開會時，對方的聲音會被麥克風收進來。App 會把這種回音從「我」那邊拿掉，戴耳機的效果還是最好。
@@ -40,11 +41,13 @@ Mac 選單列上的會議錄音工具。用 Google Meet、Zoom、Teams 或 Slack
 gh release download b5454 -R ggml-org/whisper.cpp -p '*xcframework.zip' -D vendor && unzip -q -d vendor vendor/*.zip
 curl -fL --http1.1 -o vendor/ggml-silero-v6.2.0.bin \
   https://huggingface.co/ggml-org/whisper-vad/resolve/main/ggml-silero-v6.2.0.bin
+gh release download 2.10.0 -R sparkle-project/Sparkle -p 'Sparkle-2.10.0.tar.xz' -D vendor \
+  && mkdir -p vendor/Sparkle && tar -xf vendor/Sparkle-2.10.0.tar.xz -C vendor/Sparkle
 ./build.sh              # 產出 build/MeeCorder.app
 ./build.sh --install    # 再複製到 ~/Applications
 ```
 
-`package.sh` 會用 Developer ID 簽章、送 Apple 公證，再包成 DMG。使用方式寫在檔案開頭。
+`package.sh` 會用 Developer ID 簽章、送 Apple 公證、包成 DMG，並產生自動更新用的 `appcast.xml`。使用方式寫在檔案開頭。自動更新用 [Sparkle](https://sparkle-project.org)。
 
 不開 App 也能測試：
 
