@@ -107,8 +107,10 @@ final class Recorder: ObservableObject {
 
     init() {
         try? FileManager.default.createDirectory(at: meetingsDir, withIntermediateDirectories: true)
-        // Ask now rather than in the first seconds of a meeting. System audio is asked for at the first recording.
-        AVCaptureDevice.requestAccess(for: .audio) { _ in }
+        // Ask now rather than in the first seconds of a meeting, which would be lost until the prompt is answered.
+        AVCaptureDevice.requestAccess(for: .audio) { _ in
+            DispatchQueue.main.async { MainActor.assumeIsolated { self.askForSystemAudio() } }
+        }
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
         refresh()
         // Fetch the speech model right after install, not when the first meeting ends.
@@ -200,6 +202,19 @@ final class Recorder: ObservableObject {
             download = nil
             self.error = "語音模型下載失敗：\(error.localizedDescription)"
             throw error
+        }
+    }
+
+    /// macOS has no call that asks for system audio access; it asks when audio is first captured. So capture two
+    /// seconds once, after the microphone question, and throw them away.
+    private func askForSystemAudio() {
+        guard !UserDefaults.standard.bool(forKey: "askedForSystemAudio"), recording == nil else { return }
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        guard let capture = try? MeetingCapture(dir: dir) else { return }
+        UserDefaults.standard.set(true, forKey: "askedForSystemAudio")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            capture.stop()
+            try? FileManager.default.removeItem(at: dir)
         }
     }
 
