@@ -1,0 +1,7 @@
+# App icon
+
+The artwork in `AppIcon.icon/Assets/art.png` was generated with OpenAI `gpt-image-2.5-sunburst` (1024×1024, quality high, transparent background) from this prompt:
+
+> A macOS app icon for "Meet Recorder", an app that records online meetings and turns them into transcripts. Follow Apple macOS icon design guidelines: a single rounded-square (squircle) tile centered on a transparent background, leaving the standard margin around it, with a subtle drop shadow. Tile: rich indigo-to-deep-blue vertical gradient with a soft top highlight. Foreground: a large clean white speech bubble with a short tail at the bottom-left, containing a symmetric audio waveform of seven rounded vertical bars in the same indigo gradient; behind it, slightly up and to the right, a smaller translucent white speech bubble representing the other side of the conversation; a small bright red recording dot with a white ring near the top-left corner of the front bubble. Minimal, crisp, modern, polished vector style with gentle depth. No text, no letters, no microphone, no people.
+
+The generated tile was cropped to its inside and scaled to fill the square canvas, with no rounded corners: `AppIcon.icon` is an Icon Composer document, and macOS cuts the shape itself. macOS 26 and later shrink an icon into a gray tile unless it comes in this format; a plain `.icns` or an asset-catalog app icon is not enough. `build.sh` compiles it with `actool` into `Assets.car`, plus `AppIcon.icns` for macOS 15.
