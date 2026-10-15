@@ -4,6 +4,8 @@ import AVFoundation
 import Foundation
 import whisper
 
+// The app's first name, kept so a Mac that already downloaded the 1.1 GB model doesn't fetch it again.
+// The bundle ID keeps that name too, so privacy grants and the login item carry over.
 let supportDir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
     .appendingPathComponent("Meet Recorder")
 let modelURL = supportDir.appendingPathComponent("ggml-breeze-asr-25-q5_k.bin")

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Package Meet Recorder for colleagues: signed with Developer ID, notarized by Apple, in a DMG that opens
+# Package MeeCorder for colleagues: signed with Developer ID, notarized by Apple, in a DMG that opens
 # without Gatekeeper warnings. Run it in Terminal on the Mac (signing needs the unlocked login keychain).
 #
 # Once per Mac:
@@ -8,7 +8,7 @@
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-app="$here/build/Meet Recorder.app"
+app="$here/build/MeeCorder.app"
 profile="${NOTARY_PROFILE:-meet-recorder}"
 
 identity="$(security find-identity -v -p codesigning | awk -F'"' '/Developer ID Application/ {print $2; exit}')"
@@ -19,12 +19,12 @@ codesign --force --timestamp --options runtime --sign "$identity" "$app/Contents
 codesign --force --timestamp --options runtime --entitlements "$here/entitlements.plist" --sign "$identity" "$app"
 
 version="$(plutil -extract CFBundleShortVersionString raw "$here/Info.plist")"
-dmg="$here/build/Meet-Recorder-$version.dmg"
+dmg="$here/build/MeeCorder-$version.dmg"
 staging="$(mktemp -d)"
 trap 'rm -rf "$staging"' EXIT
-ditto "$app" "$staging/Meet Recorder.app"
+ditto "$app" "$staging/MeeCorder.app"
 ln -s /Applications "$staging/Applications"  # Drag the app onto this to install.
-hdiutil create -quiet -volname "Meet Recorder" -srcfolder "$staging" -ov -format UDZO "$dmg"
+hdiutil create -quiet -volname "MeeCorder" -srcfolder "$staging" -ov -format UDZO "$dmg"
 codesign --timestamp --sign "$identity" "$dmg"
 
 echo "==> Notarizing (a few minutes)"

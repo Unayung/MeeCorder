@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build "Meet Recorder.app" into build/, and with --install copy it to ~/Applications.
+# Build "MeeCorder.app" into build/, and with --install copy it to ~/Applications.
 #
 # Needs whisper.cpp's Apple build and the Silero voice activity model in vendor/ (kept out of Git):
 #   gh release download b5454 -R ggml-org/whisper.cpp -p '*xcframework.zip' -D vendor && unzip -q -d vendor vendor/*.zip
@@ -8,7 +8,7 @@
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-app="$here/build/Meet Recorder.app"
+app="$here/build/MeeCorder.app"
 frameworks="$here/vendor/build-apple/whisper.xcframework/macos-arm64_x86_64"
 
 if [ -z "${DEVELOPER_DIR:-}" ] && [ -d /Applications/Xcode.app/Contents/Developer ]; then
@@ -25,7 +25,7 @@ xcrun actool "$here/Icon/AppIcon.icon" --compile "$app/Contents/Resources" --pla
 ditto "$frameworks/whisper.framework" "$app/Contents/Frameworks/whisper.framework"
 xcrun swiftc -O -swift-version 5 -parse-as-library -target arm64-apple-macos15.0 \
   -F "$frameworks" -framework whisper -Xlinker -rpath -Xlinker @executable_path/../Frameworks \
-  -o "$app/Contents/MacOS/MeetRecorder" "$here"/Sources/*.swift
+  -o "$app/Contents/MacOS/MeeCorder" "$here"/Sources/*.swift
 
 # A stable signing identity keeps the privacy grants across rebuilds; ad-hoc signing would lose them.
 # Over SSH the login keychain is locked: IDENTITY=- signs ad-hoc instead.
@@ -36,7 +36,7 @@ echo "Built $app"
 
 if [ "${1:-}" = "--install" ]; then
   mkdir -p "$HOME/Applications"
-  rm -rf "$HOME/Applications/Meet Recorder.app"
-  ditto "$app" "$HOME/Applications/Meet Recorder.app"
-  echo "Installed ~/Applications/Meet Recorder.app"
+  rm -rf "$HOME/Applications/MeeCorder.app"
+  ditto "$app" "$HOME/Applications/MeeCorder.app"
+  echo "Installed ~/Applications/MeeCorder.app"
 fi

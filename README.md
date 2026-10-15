@@ -1,4 +1,4 @@
-# Meet Recorder
+# MeeCorder
 
 Mac 選單列上的會議錄音工具。用 Google Meet、Zoom、Teams 或 Slack 開會時，它會自動開始錄音，會議結束後在這台 Mac 上產生逐字稿，分成「我」和「對方」。錄音和逐字稿都不會上傳。
 
@@ -11,9 +11,9 @@ Mac 選單列上的會議錄音工具。用 Google Meet、Zoom、Teams 或 Slack
 
 ## 安裝
 
-1. 到 [Releases](../../releases/latest) 下載 `Meet-Recorder-x.y.dmg`。
-2. 打開 DMG，把 Meet Recorder 拖進 Applications 資料夾。
-3. 打開 Meet Recorder，允許使用麥克風。選單列會出現麥克風圖示，並開始下載語音模型（只有第一次，約 1.1 GB）。
+1. 到 [Releases](../../releases/latest) 下載 `MeeCorder-x.y.dmg`。
+2. 打開 DMG，把 MeeCorder 拖進 Applications 資料夾。
+3. 打開 MeeCorder，允許使用麥克風。選單列會出現麥克風圖示，並開始下載語音模型（只有第一次，約 1.1 GB）。
 4. 第一次開會時，macOS 會再問一次「系統音訊錄製」的權限，按允許。這個權限是用來錄下對方的聲音。
 
 ## 使用
@@ -39,7 +39,7 @@ Mac 選單列上的會議錄音工具。用 Google Meet、Zoom、Teams 或 Slack
 gh release download b5454 -R ggml-org/whisper.cpp -p '*xcframework.zip' -D vendor && unzip -q -d vendor vendor/*.zip
 curl -fL --http1.1 -o vendor/ggml-silero-v6.2.0.bin \
   https://huggingface.co/ggml-org/whisper-vad/resolve/main/ggml-silero-v6.2.0.bin
-./build.sh              # 產出 build/Meet Recorder.app
+./build.sh              # 產出 build/MeeCorder.app
 ./build.sh --install    # 再複製到 ~/Applications
 ```
 
@@ -48,9 +48,9 @@ curl -fL --http1.1 -o vendor/ggml-silero-v6.2.0.bin \
 不開 App 也能測試：
 
 ```sh
-MeetRecorder --self-test               # 回音判斷和幻聽過濾的檢查
-MeetRecorder --test-record 20 --out DIR  # 錄 20 秒
-MeetRecorder --transcribe DIR          # 轉寫一個會議資料夾
+MeeCorder --self-test               # 回音判斷和幻聽過濾的檢查
+MeeCorder --test-record 20 --out DIR  # 錄 20 秒
+MeeCorder --transcribe DIR          # 轉寫一個會議資料夾
 ```
 
 ## 授權

@@ -69,11 +69,11 @@ enum Entry {
             }
             dispatchMain()
         }
-        MeetRecorderApp.main()
+        MeeCorderApp.main()
     }
 }
 
-struct MeetRecorderApp: App {
+struct MeeCorderApp: App {
     @StateObject private var recorder = Recorder()
 
     var body: some Scene {

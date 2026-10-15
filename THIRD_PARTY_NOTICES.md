@@ -1,6 +1,6 @@
 # Third-party notices
 
-Meet Recorder ships with the following software. It also downloads the Breeze ASR 25 speech model ([MediaTek Research](https://huggingface.co/MediaTek-Research/Breeze-ASR-25), Apache License 2.0, in the GGML conversion by [shdennlin](https://huggingface.co/shdennlin/breeze-asr-25-ggml)) on first launch.
+MeeCorder ships with the following software. It also downloads the Breeze ASR 25 speech model ([MediaTek Research](https://huggingface.co/MediaTek-Research/Breeze-ASR-25), Apache License 2.0, in the GGML conversion by [shdennlin](https://huggingface.co/shdennlin/breeze-asr-25-ggml)) on first launch.
 
 ## whisper.cpp
 

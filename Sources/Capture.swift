@@ -176,12 +176,12 @@ final class MeetingCapture {
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let description = CATapDescription(stereoGlobalTapButExcludeProcesses: processObject(for: getpid()).map { [$0] } ?? [])
         description.uuid = UUID()
-        description.name = "Meet Recorder"
+        description.name = "MeeCorder"
         description.isPrivate = true
         description.muteBehavior = .unmuted
         try check(AudioHardwareCreateProcessTap(description, &tap), "Creating the system audio tap")
         let config: [String: Any] = [
-            kAudioAggregateDeviceNameKey: "Meet Recorder",
+            kAudioAggregateDeviceNameKey: "MeeCorder",
             kAudioAggregateDeviceUIDKey: UUID().uuidString,
             kAudioAggregateDeviceMainSubDeviceKey: micUID,
             kAudioAggregateDeviceIsPrivateKey: true,
