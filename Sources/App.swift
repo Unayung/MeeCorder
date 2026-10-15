@@ -52,6 +52,8 @@ enum Entry {
             precondition(cleanSegment("謝謝觀看").isEmpty)
             precondition(cleanSegment(" 好啦就這樣囉 bye bye") == "好啦就這樣囉 bye bye")
             precondition(cleanSegment("我們下週再討論我們下週再討論我們下週再討論") == "我們下週再討論")
+            precondition(speechStart(81, 157, speech: [(81, 82.5), (151, 170)]) == 151)
+            precondition(speechStart(10, 15, speech: [(9, 12), (12.5, 16)]) == 10)
             log("self-test passed")
             exit(0)
         }
@@ -102,11 +104,20 @@ final class Recorder: ObservableObject {
     private var download: Task<URL, Error>?
     private var queue: Task<Void, Never>?
     private var lastSeen = Date.distantPast
+    private var catchingUp = false
     private var skipThisMeeting = false  // Stopped by hand while the call goes on: don't start again until it ends.
     private var timer: Timer?
 
     init() {
         try? FileManager.default.createDirectory(at: meetingsDir, withIntermediateDirectories: true)
+        if !FileManager.default.fileExists(atPath: vocabularyURL.path) {
+            try? """
+            # 會議裡常出現的人名、產品名、英文術語，一行一個，辨識時會參考這些寫法。
+            # 開頭是 # 的行是說明，不會用到。例如：
+            # Johnson
+            # staging
+            """.write(to: vocabularyURL, atomically: true, encoding: .utf8)
+        }
         // Ask now rather than in the first seconds of a meeting, which would be lost until the prompt is answered.
         AVCaptureDevice.requestAccess(for: .audio) { _ in
             DispatchQueue.main.async { MainActor.assumeIsolated { self.askForSystemAudio() } }
@@ -125,6 +136,7 @@ final class Recorder: ObservableObject {
     }
 
     private func poll() {
+        if let current = recording { catchUp(current.meeting) }
         if meetingApp() != nil {
             lastSeen = Date()
             if let current = recording {
@@ -182,6 +194,23 @@ final class Recorder: ObservableObject {
             }
             transcribing -= 1
             refresh()
+        }
+    }
+
+    /// Transcribes each minute once it is recorded, so the transcript is ready moments after the meeting.
+    /// Waits for the model rather than starting its download; finish() does that.
+    private func catchUp(_ meeting: URL) {
+        guard !catchingUp, FileManager.default.fileExists(atPath: modelURL.path) else { return }
+        catchingUp = true
+        let previous = queue
+        queue = Task {
+            await previous?.value
+            do {
+                _ = try await meetingLines(meeting: meeting, model: modelURL)
+            } catch {
+                log("transcribing \(meeting.lastPathComponent) as it records failed: \(error)")
+            }
+            catchingUp = false
         }
     }
 
@@ -292,6 +321,8 @@ struct MenuView: View {
             Divider()
             HStack {
                 Button("打開會議資料夾") { NSWorkspace.shared.open(meetingsDir) }
+                Button("編輯詞彙") { NSWorkspace.shared.open(vocabularyURL) }
+                    .help("加入會議常出現的人名、產品名、術語，讓逐字稿寫對")
                 Spacer()
                 Button("結束") {
                     recorder.stop()

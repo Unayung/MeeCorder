@@ -11,7 +11,7 @@ let supportDir = FileManager.default.urls(for: .applicationSupportDirectory, in:
 let modelURL = supportDir.appendingPathComponent("ggml-breeze-asr-25-q5_k.bin")
 let modelSource = URL(string: "https://huggingface.co/shdennlin/breeze-asr-25-ggml/resolve/main/ggml-breeze-asr-25-q5_k.bin")!
 
-struct Line {
+struct Line: Codable {
     let start: Double, end: Double, speaker: String, text: String
 }
 
@@ -88,7 +88,7 @@ func samples(_ files: [URL]) throws -> [Float] {
 
 /// Same settings as life-recorder's receiver: whisper-cli's defaults (beam search of 5), Chinese, and the
 /// Silero voice activity model, which skips silence, where Whisper hallucinates most.
-func transcribe(_ context: OpaquePointer, _ audio: [Float], speaker: String) -> [Line] {
+func transcribe(_ context: OpaquePointer, _ audio: [Float], speaker: String, prompt: String) -> [Line] {
     guard !audio.isEmpty else { return [] }
     let vadModel = Bundle.main.url(forResource: "ggml-silero-v6.2.0", withExtension: "bin")?.path
     var params = whisper_full_default_params(WHISPER_SAMPLING_BEAM_SEARCH)
@@ -100,25 +100,45 @@ func transcribe(_ context: OpaquePointer, _ audio: [Float], speaker: String) -> 
     params.print_timestamps = false
     let status: Int32 = "zh".withCString { language in
         params.language = language
-        return (vadModel ?? "").withCString { vad in
+        return (vadModel ?? "").withCString { vad in prompt.withCString { hint in
+            if !prompt.isEmpty { params.initial_prompt = hint }
             if vadModel != nil {
                 params.vad = true
                 params.vad_model_path = vad
             }
             return audio.withUnsafeBufferPointer { whisper_full(context, params, $0.baseAddress, Int32($0.count)) }
-        }
+        } }
     }
     guard status == 0 else {
         log("whisper failed on the \(speaker) track (\(status))")
         return []
     }
+    // Segment and speech times are in hundredths of a second.
+    let speech = (0..<whisper_full_n_vad_segments(context)).map {
+        (start: Double(whisper_full_get_vad_segment_t0(context, $0)) / 100, end: Double(whisper_full_get_vad_segment_t1(context, $0)) / 100)
+    }
     return (0..<whisper_full_n_segments(context)).compactMap { i in
         let text = cleanSegment(String(cString: whisper_full_get_segment_text(context, i)))
         guard !text.isEmpty else { return nil }
-        // Segment times are in hundredths of a second.
-        return Line(start: Double(whisper_full_get_segment_t0(context, i)) / 100,
-                    end: Double(whisper_full_get_segment_t1(context, i)) / 100, speaker: speaker, text: text)
+        let start = Double(whisper_full_get_segment_t0(context, i)) / 100, end = Double(whisper_full_get_segment_t1(context, i)) / 100
+        return Line(start: speechStart(start, end, speech: speech), end: end, speaker: speaker, text: text)
     }
+}
+
+/// Whisper's VAD splices all speech into one stream, so a line can straddle a long pause: a cough at 1:21 and a
+/// sentence begun at 2:32 came out as one line at 1:21. Such a line starts where most of its speech is.
+func speechStart(_ start: Double, _ end: Double, speech: [(start: Double, end: Double)]) -> Double {
+    var runs: [(start: Double, end: Double, length: Double)] = []  // Speech in the line, split at pauses over a second.
+    for piece in speech where piece.end > start && piece.start < end {
+        let length = min(piece.end, end) - max(piece.start, start)
+        if let last = runs.last, piece.start - last.end < 1 {
+            runs[runs.count - 1] = (last.start, piece.end, last.length + length)
+        } else {
+            runs.append((piece.start, piece.end, length))
+        }
+    }
+    guard runs.count > 1, let most = runs.max(by: { $0.length < $1.length }) else { return start }
+    return max(start, most.start)
 }
 
 /// Drops what Whisper makes up rather than hears, after life-recorder's clean_transcript.
@@ -147,20 +167,60 @@ func timestamp(_ seconds: Double) -> String {
     return String(format: "%02d:%02d:%02d", s / 3600, s / 60 % 60, s % 60)
 }
 
+/// Names and terms that Whisper should spell right, one per line, edited by whoever records. Lines starting
+/// with # are notes. Like life-recorder's glossary, read again for every minute so edits apply at once.
+let vocabularyURL = meetingsDir.appendingPathComponent("詞彙.txt")
+
+func vocabulary() -> String {
+    let text = (try? String(contentsOf: vocabularyURL, encoding: .utf8)) ?? ""
+    let terms = text.split(whereSeparator: \.isNewline).map { $0.trimmingCharacters(in: .whitespaces) }
+        .filter { !$0.isEmpty && !$0.hasPrefix("#") }
+    return String(terms.joined(separator: ", ").prefix(800))  // whisper.cpp keeps only n_text_ctx/2 tokens of it.
+}
+
+/// One segment transcribed, times from the segment's start.
+struct Part: Codable { let duration: Double, lines: [Line] }
+
+/// Every line of a meeting so far, on the meeting's timeline, echo removed. Each finished segment is transcribed
+/// once and kept next to its audio as JSON, so this runs every minute of a meeting and only the last minute is
+/// left when it ends. After a crash, only what was never transcribed is.
+func meetingLines(meeting: URL, model: URL) async throws -> [Line] {
+    let audio = meeting.appendingPathComponent("audio")
+    var context: OpaquePointer?
+    defer { if let context { whisper_free(context) } }
+    let prompt = vocabulary()
+    func track(_ name: String, speaker: String) throws -> [Line] {
+        var offset = 0.0, lines: [Line] = []
+        for segment in segments(in: audio, track: name) {
+            let cache = segment.deletingPathExtension().appendingPathExtension("json")
+            var part = (try? Data(contentsOf: cache)).flatMap { try? JSONDecoder().decode(Part.self, from: $0) }
+            if part == nil {
+                if context == nil {
+                    var cparams = whisper_context_default_params()
+                    cparams.use_gpu = true
+                    context = whisper_init_from_file_with_params(model.path, cparams)
+                }
+                guard let context else { throw CoreAudioError(what: "Loading the speech model", status: -1) }
+                let pcm = try samples([segment])
+                part = Part(duration: Double(pcm.count) / 16_000,
+                            lines: transcribe(context, pcm, speaker: speaker, prompt: prompt))
+                try JSONEncoder().encode(part).write(to: cache, options: .atomic)
+            }
+            lines += part!.lines.map { Line(start: $0.start + offset, end: $0.end + offset, speaker: speaker, text: $0.text) }
+            offset += part!.duration
+        }
+        return lines
+    }
+    let system = try track("system", speaker: "對方")
+    let mic = try track("mic", speaker: "我").filter { !isEcho($0, system) }
+    return (mic + system).sorted { $0.start < $1.start }
+}
+
 /// Writes `transcript.md` into the meeting folder and returns its URL.
 @discardableResult
 func makeTranscript(meeting: URL, model: URL) async throws -> URL {
-    let audio = meeting.appendingPathComponent("audio")
-    var cparams = whisper_context_default_params()
-    cparams.use_gpu = true
-    guard let context = whisper_init_from_file_with_params(model.path, cparams) else {
-        throw CoreAudioError(what: "Loading the speech model", status: -1)
-    }
-    defer { whisper_free(context) }
-    let system = transcribe(context, try samples(segments(in: audio, track: "system")), speaker: "對方")
-    let mic = transcribe(context, try samples(segments(in: audio, track: "mic")), speaker: "我").filter { !isEcho($0, system) }
     var text = "# \(meeting.lastPathComponent)\n\n"
-    for line in (mic + system).sorted(by: { $0.start < $1.start }) {
+    for line in try await meetingLines(meeting: meeting, model: model) {
         text += "[\(timestamp(line.start))] \(line.speaker)：\(line.text)\n\n"
     }
     let url = meeting.appendingPathComponent("transcript.md")
